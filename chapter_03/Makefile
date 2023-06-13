@@ -1,7 +1,7 @@
 CXXFLAGS = --std=c++17 -O3
 
-sort : sort.o
+search : search.o
 	$(CXX) $^ -o $@
 
 clean :
-	rm -rf *.o sort
+	rm -rf *.o search

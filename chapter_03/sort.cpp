@@ -172,7 +172,7 @@ int main(int argc, char* argv[]) {
 
     std::chrono::time_point<std::chrono::steady_clock> t1, t2;
     long dt;
-    int dummy_val; // Use for accumulation to prevent compiler optimising away ops
+    int dummy_val = 0; // Use for accumulation to prevent compiler optimising away ops
     int repeats = 10e4;
 
     int array_size = get_array_size(argv[1]);

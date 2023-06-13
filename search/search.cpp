@@ -163,6 +163,37 @@ int recursive_linear_search(std::vector<int> A, int n, int i, int x) {
     return recursive_linear_search(std::move(A), n, i+1, x);
 }
 
+/*
+ * @brief Recursive binary search implementation
+ *
+ * @param[in]  A  vector of ints to be searched
+ * @param[in]  p  lower index search bound (inclusive)
+ * @param[in]  r  upper index search bound (inclusive)
+ * @param[in]  x  search value to be found in A
+ * @return  (index)  index of A for which x found; -1 for not found
+ * */
+int recursive_binary_search(std::vector<int> A, int p, int r, int x) {
+    // Base recursive case
+    if (p > r) {
+        return -1;
+    }
+
+    // Calculate midpoint of index range [p..r]
+    int q = (p + r) / 2;
+
+    // Return index if x found
+    if (A[q] == x) {
+        return q;
+    }
+
+    // If element at index q is > x, then recurse to lower half else higher half
+    if (A[q] > x) {
+        return recursive_binary_search(std::move(A), p, q-1, x);
+    } else {
+        return recursive_binary_search(std::move(A), q+1, r, x);
+    }
+}
+
 int main(int argc, char* argv[]) {
     // Check correct usage (e.g. 'search 100000 50000')
     if (argc != 3) {
@@ -225,6 +256,16 @@ int main(int argc, char* argv[]) {
     dt = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
     std::cout << "Recursive linear search: " << ((float)dt / (10e5 * repeats)) << " s (average per op)" <<std::endl;
 
+
+    // Recursive binary search
+    t1 = std::chrono::steady_clock::now();
+    for (int i=0; i<repeats; i++) {
+        dummy_val += recursive_binary_search(arr,0,array_size-1,search_value);
+    }
+    t2 = std::chrono::steady_clock::now();
+
+    dt = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+    std::cout << "Recursive binary search: " << ((float)dt / (10e5 * repeats)) << " s (average per op)" <<std::endl;
 
     // Dump final accumulated value to prevent compiler optimising away ops
     std::cout << dummy_val << std::endl;

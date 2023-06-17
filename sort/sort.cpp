@@ -73,13 +73,13 @@ void selection_sort(std::vector<int> &A, int n) {
     int smallest;
 
     for(int i=0; i<n; i++) {
-        smallest = A[i];
+        smallest = i;
         for (int j=i+1; j<n; j++) {
-            if (A[j] < smallest) {
-                smallest = A[j];
+            if (A[j] < A[smallest]) {
+                smallest = j;
             }
         }
-        A[i] = smallest;
+        A[i] = A[smallest];
     }
 }
 

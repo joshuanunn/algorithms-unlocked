@@ -67,7 +67,6 @@ int get_repeat_count(char* param) {
  *
  * @param[in]  A  reference to vector of ints to be sorted
  * @param[in]  n  size of vector
- * @return  answer  (last) index of A for which x found; -1 for not found
  * */
 void selection_sort(std::vector<int> &A, int n) {
     int smallest;
@@ -81,6 +80,45 @@ void selection_sort(std::vector<int> &A, int n) {
         }
         A[i] = A[smallest];
     }
+}
+
+/*
+ * @brief Insertion sort implementation
+ *
+ * @param[in]  A  reference to vector of ints to be sorted
+ * @param[in]  n  size of vector
+ * */
+void insertion_sort(std::vector<int> &A, int n) {
+    int key;
+    int j;
+
+    for(int i=1; i<n; i++) {
+        key = A[i];
+        j = i - 1;
+        while (j>=0 && A[j]>key) {
+            A[j+1] = A[j];
+            j--;
+        }
+        A[j+1] = key;
+    }
+}
+
+/*
+ * @brief Verify elements of a vector of ints are monotonically increasing
+ *
+ * @param[in]  A  reference to vector of ints to be checked
+ * @param[in]  n  size of vector
+ * */
+bool verify_sorted(std::vector<int> const &A, int n) {
+    int previous_value = A[0];
+
+    for (int i=1; i<n; i++) {
+        if (A[i] < previous_value) {
+            return false;
+        }
+        previous_value = A[i];
+    }
+    return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -113,11 +151,46 @@ int main(int argc, char* argv[]) {
         // Accumulate measurement time
         dt += std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
 
+        // Check the sort actually worked
+        if (!verify_sorted(arr, array_size)) {
+            std::cerr << "Selection sort failure!" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
         // Use values in the sorted array to prevent the compiler optimising away ops
         dummy_val += arr[i % array_size];
     }
 
     std::cout << "Selection sort: " << ((float)dt / (1e6 * repeats)) << " s (average per op)" <<std::endl;
+
+
+    // Insertion sort
+    dt = 0;
+    for (int i=0; i<repeats; i++) {
+        // Create a vector with random integers (seeded)
+        std::srand(42);
+        std::generate(arr.begin(), arr.end(), std::rand);
+
+        // Sort array in place (only time the sort)
+        t1 = std::chrono::steady_clock::now();
+        insertion_sort(arr, array_size);
+        t2 = std::chrono::steady_clock::now();
+
+        // Accumulate measurement time
+        dt += std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+
+        // Check the sort actually worked
+        if (!verify_sorted(arr, array_size)) {
+            std::cerr << "Insertion sort failure!" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        // Use values in the sorted array to prevent the compiler optimising away ops
+        dummy_val += arr[i % array_size];
+    }
+
+    std::cout << "Insertion sort: " << ((float)dt / (1e6 * repeats)) << " s (average per op)" <<std::endl;
+
 
     // Dump final accumulated value to prevent compiler optimising away ops
     std::cout << dummy_val << std::endl;

@@ -168,6 +168,54 @@ void merge_sort(std::vector<int> &A, int p, int r) {
 }
 
 /*
+ * @brief Supporting partition function for quicksort implementation
+ *
+ * @param[in]  A  reference to vector of ints
+ * @param[in]  p  index of subarray A[p..q]
+ * @param[in]  r  index of subarray A[p..q]
+ * */
+int partition(std::vector<int> &A, int p, int r) {
+    // Start with pivot index (q) at start of subarray
+    int q = p;
+
+    // Iterate over the unpartitioned subarray A[u..r-1], and compare the
+    // value of each element A[u] with the pivot A[r]. At each step, if A[u]
+    // is less than the pivot value, swap the elements into the current pivot
+    // index position and then increment the pivot index to the next element.
+    for(int u=p; u<=(r-1); u++) {
+        if (A[u] <= A[r]) {
+            std::swap(A[q], A[u]);
+            q++;
+        }
+    }
+
+    // Finally, move the pivot value to position q, by swapping A[q] and A[r]
+    std::swap(A[q], A[r]);
+
+    // Return the index of the pivot, where A[q] is the pivot value
+    return q;
+}
+
+/*
+ * @brief Quicksort implementation
+ *
+ * @param[in]  A  reference to vector of ints to be sorted
+ * @param[in]  p  start index of subarray of A
+ * @param[in]  r  end index of subarray of A
+ * */
+void quicksort(std::vector<int> &A, int p, int r) {
+    // Trivial basecase for one or zero elements, as they are "sorted"
+    if (p >= r) return;
+
+    // Partition A in-place and return the chosen pivot q
+    int q = partition(A, p, r);
+
+    // Recursively sort each subarray A[p..q-1] and A[q+1..r]
+    quicksort(A, p, q-1);
+    quicksort(A, q+1, r);
+}
+
+/*
  * @brief Verify elements of a vector of ints are monotonically increasing
  *
  * @param[in]  A  reference to vector of ints to be checked
@@ -282,6 +330,34 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Merge sort: " << ((float)dt / (1e6 * repeats)) << " s (average per op)" <<std::endl;
+
+
+    // Quicksort
+    dt = 0;
+    for (int i=0; i<repeats; i++) {
+        // Create a vector with random integers (seeded)
+        std::srand(42);
+        std::generate(arr.begin(), arr.end(), std::rand);
+
+        // Sort array in place (only time the sort)
+        t1 = std::chrono::steady_clock::now();
+        quicksort(arr, 0, array_size-1);
+        t2 = std::chrono::steady_clock::now();
+
+        // Accumulate measurement time
+        dt += std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+
+        // Check the sort actually worked
+        if (!verify_sorted(arr, array_size)) {
+            std::cerr << "Quicksort failure!" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        // Use values in the sorted array to prevent the compiler optimising away ops
+        dummy_val += arr[i % array_size];
+    }
+
+    std::cout << "Quicksort: " << ((float)dt / (1e6 * repeats)) << " s (average per op)" <<std::endl;
 
 
     // Dump final accumulated value to prevent compiler optimising away ops

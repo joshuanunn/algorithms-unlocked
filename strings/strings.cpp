@@ -1,25 +1,29 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <climits>
 #include <cstdlib>
+#include <cstring>
+#include <functional>
 #include <iostream>
 #include <iomanip>
-#include <climits>
 #include <numeric>
+#include <random>
 #include <string>
 #include <vector>
 
 /*
- * @brief Parse argument to extract user array size
+ * @brief Parse argument to extract user string length
  *
- * @param[in]  param  argv element corresponding to array size
- * @return  (int)array_size  parsed size of array, casted to int
+ * @param[in]  param  argv element corresponding to string length
+ * @return  (int)string_length  parsed size of array, casted to int
  * */
-int get_array_size(char *param) {
+int get_string_length(char *param) {
     char *endptr;
-    long array_size;
+    long string_length;
 
     errno = 0;
-    array_size = std::strtol(param, &endptr, 10);
+    string_length = std::strtol(param, &endptr, 10);
 
     if (errno != 0) {
         perror("strtol");
@@ -27,16 +31,16 @@ int get_array_size(char *param) {
     }
 
     if (endptr == param) {
-        std::cerr << "could not parse array_size as an integer" << std::endl;
+        std::cerr << "could not parse string_length as an integer" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    if (array_size > 100000000) {
-        std::cerr << "array_size parameter must be <= 100000000" << std::endl;
+    if (string_length > 40000) {
+        std::cerr << "string_length parameter must be <= 40000" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    return (int) array_size;
+    return (int) string_length;
 }
 
 /*
@@ -65,7 +69,28 @@ int get_repeat_count(char *param) {
     return (int) repeat_count;
 }
 
-// Class to encapsulate an LCS table computed for two strings
+/*
+ * @brief Class to encapsulate an LCS table computed for two strings.
+ *
+ * Example from the book for the strings X and Y give the LCS
+ * table below, from which the LCS of "CTCA" can be derived.
+ *
+ *   X = "CATCGA"
+ *   Y = "GTACCGTCA"
+ *
+ *   table = {0, 0, 0, ..., 3, 3, 3, 4}
+ *
+ * LCS table form:
+ *
+ *          G  T  A  C  C  G  T  C  A
+ *       0  0  0  0  0  0  0  0  0  0
+ *    C  0  0  0  0  1  1  1  1  1  1
+ *    A  0  0  0  1  1  1  1  1  1  2
+ *    T  0  0  1  1  1  1  1  2  2  2
+ *    C  0  0  1  1  2  2  2  2  3  3
+ *    G  0  1  1  1  2  2  3  3  3  3
+ *    A  0  1  1  2  2  2  3  3  3  4
+ * */
 struct LCSTable {
     int height;
     int width;
@@ -166,44 +191,84 @@ std::string assemble_lcs(LCSTable const &t, int i, int j) {
     }
 }
 
+// Taken from: https://stackoverflow.com/a/444614
+template <typename T = std::mt19937>
+auto random_generator() -> T {
+    auto constexpr seed_bytes = sizeof(typename T::result_type) * T::state_size;
+    auto constexpr seed_len = seed_bytes / sizeof(std::seed_seq::result_type);
+    auto seed = std::array<std::seed_seq::result_type, seed_len>();
+    auto dev = std::random_device();
+    std::generate_n(begin(seed), seed_len, std::ref(dev));
+    auto seed_seq = std::seed_seq(begin(seed), end(seed));
+    return T{seed_seq};
+}
+
+// Taken from: https://stackoverflow.com/a/444614
+std::string generate_random_alphanumeric_string(std::size_t len) {
+    static constexpr auto chars =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
+    thread_local auto rng = random_generator<>();
+    auto dist = std::uniform_int_distribution{{}, std::strlen(chars) - 1};
+    auto result = std::string(len, '\0');
+    std::generate_n(begin(result), len, [&]() { return chars[dist(rng)]; });
+    return result;
+}
+
 int main(int argc, char *argv[]) {
-    // Check correct usage (e.g. 'strings 100000 5')
+    // Check correct usage (e.g. 'strings 1000 5')
     if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " [array_size] [repeat_count]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [string_length] [repeat_count]" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    std::chrono::time_point <std::chrono::steady_clock> t1, t2;
-    long dt;
+    std::chrono::time_point <std::chrono::steady_clock> t1, t2, t3;
+    long dt1, dt2;
+    std::string lcs;
     int dummy_val = 0; // Use for accumulation to prevent compiler optimising away ops
 
-    int array_size = get_array_size(argv[1]);
+    int string_length = get_string_length(argv[1]);
     int repeats = get_repeat_count(argv[2]);
-    std::vector<int> arr(array_size);
 
-    // Selection sort
-    std::string X = "CATCGA";
-    std::string Y = "GTACCGTCA";
+    // Example strings X and Y from the book
+    //std::string X = "CATCGA";
+    //std::string Y = "GTACCGTCA";
 
-    dt = 0;
+    // Create random alphanumeric strings of user specified length
+    std::string X = generate_random_alphanumeric_string(string_length);
+    std::string Y = generate_random_alphanumeric_string(string_length);
+
+    dt1 = 0;
+    dt2 = 0;
+
     for (int i = 0; i < repeats; i++) {
-        // Sort array in place (only time the sort)
+
         t1 = std::chrono::steady_clock::now();
+
+        // Construct LCS table
         auto lcs_table = LCSTable(X, Y);
-        auto lcs = assemble_lcs(lcs_table, X.size(), Y.size());
         t2 = std::chrono::steady_clock::now();
 
-        // Accumulate measurement time
-        dt += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        // Calculate LCS string
+        lcs = assemble_lcs(lcs_table, X.size(), Y.size());
+        t3 = std::chrono::steady_clock::now();
 
-        std::cout << lcs_table << std::endl;
-        std::cout << lcs << std::endl;
+        // Accumulate measurement time
+        dt1 += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        dt2 += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+
+        // Print intermediate LCS table for debugging
+        //std::cout << lcs_table << std::endl;
 
         // Use values in the sorted array to prevent the compiler optimising away ops
-        dummy_val += arr[i % array_size];
+        dummy_val += lcs[i % string_length];
     }
 
-    std::cout << "Longest common subsequence: " << ((float) dt / (1e6 * repeats)) << " s (average per op)" << std::endl;
+    // Print final LCS string
+    std::cout << "Longest common subsequence: " << lcs << std::endl;
+    std::cout << "Time to compute LCS table: " << ((float) dt1 / (1e6 * repeats)) << " s (average per op)" << std::endl;
+    std::cout << "Time to compute LCS string: " << ((float) dt2 / (1e6 * repeats)) << " s (average per op)" << std::endl;
 
     // Dump final accumulated value to prevent compiler optimising away ops
     std::cout << dummy_val << std::endl;

@@ -11,13 +11,8 @@
 #include <random>
 #include <string>
 #include <vector>
+#include "strings.hpp"
 
-/*
- * @brief Parse argument to extract user string length
- *
- * @param[in]  param  argv element corresponding to string length
- * @return  (int)string_length  parsed size of array, casted to int
- * */
 int get_string_length(char *param) {
     char *endptr;
     long string_length;
@@ -43,12 +38,6 @@ int get_string_length(char *param) {
     return (int) string_length;
 }
 
-/*
- * @brief Parse argument to extract user number of repeats
- *
- * @param[in]  param  argv element corresponding to array size
- * @return  (int)repeat_count  parsed repeat count, casted to int
- * */
 int get_repeat_count(char *param) {
     char *endptr;
     long repeat_count;
@@ -69,42 +58,6 @@ int get_repeat_count(char *param) {
     return (int) repeat_count;
 }
 
-/*
- * @brief Class to encapsulate an LCS table computed for two strings.
- *
- * Example from the book for the strings X and Y give the LCS
- * table below, from which the LCS of "CTCA" can be derived.
- *
- *   X = "CATCGA"
- *   Y = "GTACCGTCA"
- *
- *   table = {0, 0, 0, ..., 3, 3, 3, 4}
- *
- * LCS table form:
- *
- *          G  T  A  C  C  G  T  C  A
- *       0  0  0  0  0  0  0  0  0  0
- *    C  0  0  0  0  1  1  1  1  1  1
- *    A  0  0  0  1  1  1  1  1  1  2
- *    T  0  0  1  1  1  1  1  2  2  2
- *    C  0  0  1  1  2  2  2  2  3  3
- *    G  0  1  1  1  2  2  3  3  3  3
- *    A  0  1  1  2  2  2  3  3  3  4
- * */
-struct LCSTable {
-    int height;
-    int width;
-    std::string X;
-    std::string Y;
-    std::vector<int> table;
-
-    LCSTable(std::string const &str_x, std::string const &str_y);
-
-    int coord(int i, int j) const;
-
-    void compute_lcs_table();
-};
-
 LCSTable::LCSTable(std::string const &str_x, std::string const &str_y) {
     // Maintain an internal copy of the original strings used to calculate the LCS
     X = str_x;
@@ -121,18 +74,10 @@ LCSTable::LCSTable(std::string const &str_x, std::string const &str_y) {
     LCSTable::compute_lcs_table();
 }
 
-// Convenience method for converting between 2-dim (row,column) index and the internal 1-dim vector index
 int LCSTable::coord(int i, int j) const {
     return j + i * width;
 }
 
-/*
- * @brief LCSTable method to construct the LCS table
- *
- * The internal 1-dim "table" vector represents the 2-dim LCS table[0..m,0..n], for two strings X of length m and Y of
- * length n. The value of table[m,n] is the length of a longest common subsequence of X and Y.
- *
- * */
 void LCSTable::compute_lcs_table() {
     // Create zero left column
     for (int i = 0; i < height; i++) {
@@ -156,7 +101,6 @@ void LCSTable::compute_lcs_table() {
     }
 }
 
-// Overload << operator to allow natural printing of LCS table
 std::ostream &operator<<(std::ostream &out, LCSTable const &t) {
     for (int i = 0; i < t.height; i++) {
         for (int j = 0; j < t.width; j++) {
@@ -167,14 +111,6 @@ std::ostream &operator<<(std::ostream &out, LCSTable const &t) {
     return out;
 }
 
-/*
- * @brief Recursively assemble an LCS string from a pre-computed LCS table
- *
- * @param[in]  t  instance of an LCSTable precomputed from two strings
- * @param[in]  i  row index into t (and the original X, Y strings)
- * @param[in]  j  column index into t (and the original X, Y strings)
- * @return  string representing the LCS, for the given i,j indices
- * */
 std::string assemble_lcs(LCSTable const &t, int i, int j) {
     // Base case, where no common substring -- return empty string
     if (t.table[t.coord(i, j)] == 0) {
@@ -193,7 +129,7 @@ std::string assemble_lcs(LCSTable const &t, int i, int j) {
 
 // Taken from: https://stackoverflow.com/a/444614
 template <typename T = std::mt19937>
-auto random_generator() -> T {
+T random_generator() {
     auto constexpr seed_bytes = sizeof(typename T::result_type) * T::state_size;
     auto constexpr seed_len = seed_bytes / sizeof(std::seed_seq::result_type);
     auto seed = std::array<std::seed_seq::result_type, seed_len>();

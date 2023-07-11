@@ -1,18 +1,17 @@
-#include <algorithm>
-#include <array>
 #include <chrono>
-#include <climits>
 #include <cstdlib>
-#include <cstring>
-#include <functional>
 #include <iostream>
 #include <iomanip>
-#include <numeric>
-#include <random>
 #include <string>
 #include <vector>
-#include "strings.hpp"
+#include "include/randstring.hpp"
 
+/*
+ * @brief Parse argument to extract user string length
+ *
+ * @param[in]  param  argv element corresponding to string length
+ * @return  (int)string_length  parsed size of array, casted to int
+ * */
 int get_string_length(char *param) {
     char *endptr;
     long string_length;
@@ -38,6 +37,12 @@ int get_string_length(char *param) {
     return (int) string_length;
 }
 
+/*
+ * @brief Parse argument to extract user number of repeats
+ *
+ * @param[in]  param  argv element corresponding to array size
+ * @return  (int)repeat_count  parsed repeat count, casted to int
+ * */
 int get_repeat_count(char *param) {
     char *endptr;
     long repeat_count;
@@ -58,74 +63,53 @@ int get_repeat_count(char *param) {
     return (int) repeat_count;
 }
 
-LCSTable::LCSTable(std::string const &str_x, std::string const &str_y) {
-    // Maintain an internal copy of the original strings used to calculate the LCS
-    X = str_x;
-    Y = str_y;
+// Enum for string transformation operations
+enum op_type { COPY, REPLACE, INSERT, DELETE, NOOP };
 
-    // Height and width of LCS table include the first zeroed row and column
-    height = X.size() + 1;
-    width = Y.size() + 1;
+struct Operation {
+    op_type type;
+    char apply_on;
+};
 
-    // Initialise a 1-dim vector of length [height x width] to represent the 2-dim LCS table
-    table = std::vector<int>(height * width);
+/*
+ * @brief Class to encapsulate transform tables computed for two strings.
+ *
+ * Example from the book for the strings X and Y give the combined cost and op tables below.
+ *
+ *   X = "ACAAGC"
+ *   Y = "CCGT"
+ *
+ * cost/op table form:
+ *
+ *                C      C      G      T
+ *        0 -    2 I    4 I    6 I    8 I
+ *    A   2 D    1 R    3 R    5 R    7 R
+ *    C   4 D    1 C    0 C    2 I    4 I
+ *    A   6 D    3 D    2 R    1 R    3 R
+ *    A   8 D    5 D    4 R    3 R    2 R
+ *    G  10 D    7 D    6 R    3 C    4 R
+ *    C  12 D    9 C    6 C    5 D    4 R
+ * */
+struct TransformTable {
+    int height;
+    int width;
+    std::string X;
+    std::string Y;
+    int cc, cr, cd, ci; // Costs for copy, replace, delete and insert operations
+    std::vector<int> cost;
+    std::vector<Operation> op;
 
-    // Populate LCS table for the provided strings
-    LCSTable::compute_lcs_table();
-}
+    // Constructor makes a copy of the input strings, computes the height and width, and initialises the cost/op vectors.
+    TransformTable(std::string const &str_x, std::string const &str_y, int cC, int cR, int cD, int cI);
 
-int LCSTable::coord(int i, int j) const {
-    return j + i * width;
-}
+    // Convert between 2-dim (row,column) index and the internal 1-dim vector index.
+    int coord(int i, int j) const;
 
-void LCSTable::compute_lcs_table() {
-    // Create zero left column
-    for (int i = 0; i < height; i++) {
-        table[coord(i, 0)] = 0;
-    }
-
-    // Create zero top row
-    for (int j = 0; j < width; j++) {
-        table[coord(0, j)] = 0;
-    }
-
-    // Compute values for inner table
-    for (int i = 1; i < height; i++) {
-        for (int j = 1; j < width; j++) {
-            if (X[i - 1] == Y[j - 1]) {
-                table[coord(i, j)] = table[coord(i - 1, j - 1)] + 1;
-            } else {
-                table[coord(i, j)] = std::max(table[coord(i - 1, j)], table[coord(i, j - 1)]);
-            }
-        }
-    }
-}
-
-std::ostream &operator<<(std::ostream &out, LCSTable const &t) {
-    for (int i = 0; i < t.height; i++) {
-        for (int j = 0; j < t.width; j++) {
-            out << std::setw(3) << std::setfill(' ') << t.table[t.coord(i, j)];
-        }
-        out << std::endl;
-    }
-    return out;
-}
-
-std::string assemble_lcs(LCSTable const &t, int i, int j) {
-    // Base case, where no common substring -- return empty string
-    if (t.table[t.coord(i, j)] == 0) {
-        return "";
-    // Common substring, where char X[i] and Y[j] match -- recursively return substring and append matching char
-    } else if (t.X[i - 1] == t.Y[j - 1]) {
-        return assemble_lcs(t, i - 1, j - 1) + t.X[i - 1];
-    // Common substring, where char X[i] and Y[j] do not match -- recursively work back along row
-    } else if (t.table[t.coord(i, j - 1)] > t.table[t.coord(i - 1, j)]) {
-        return assemble_lcs(t, i, j - 1);
-    // Common substring, where char X[i] and Y[j] do not match -- recursively work back up column
-    } else {
-        return assemble_lcs(t, i - 1, j);
-    }
-}
+    // Construct the cost and op tables. The 1-dim vectors represent the 2-dim tables[0..m,0..n], for two strings X of
+    // length m and Y of length n. The value of cost[i,j] is the minimum cost of transforming the prefix Xi into the
+    // prefix Yj. The operation in op[i,j] is the last operation performed when transforming Xi into Yj.
+    void compute_transform_tables();
+};
 
 TransformTable::TransformTable(std::string const &str_x, std::string const &str_y, int cC, int cR, int cD, int cI) {
     // Maintain an internal copy of the original strings used to calculate the transform tables, and costs
@@ -147,6 +131,7 @@ TransformTable::TransformTable(std::string const &str_x, std::string const &str_
     // Populate cost and op tables for the provided strings
     TransformTable::compute_transform_tables();
 }
+
 
 int TransformTable::coord(int i, int j) const {
     return j + i * width;
@@ -193,6 +178,7 @@ void TransformTable::compute_transform_tables() {
     }
 }
 
+// Overload << operator to allow natural printing of transform table
 std::ostream &operator<<(std::ostream &out, TransformTable const &t) {
     std::string op_element;
 
@@ -225,6 +211,14 @@ std::ostream &operator<<(std::ostream &out, TransformTable const &t) {
     return out;
 }
 
+/*
+ * @brief Recursively assemble a set of instructions to transform the string X to Y using a pre-computed TransformTable
+ *
+ * @param[in]  t  instance of an TransformTable precomputed from two strings
+ * @param[in]  i  row index into t (and the original X, Y strings)
+ * @param[in]  j  column index into t (and the original X, Y strings)
+ * @return  vector of instructions to transform the string X to Y
+ * */
 std::vector<Operation> assemble_transformation(TransformTable const &t, int i, int j) {
     std::vector<Operation> op_vector;
 
@@ -250,6 +244,13 @@ std::vector<Operation> assemble_transformation(TransformTable const &t, int i, i
     }
 }
 
+/*
+ * @brief Apply transformation instructions to derive Y from X
+ *
+ * @param[in]  str_x  string X to be transformed
+ * @param[in]  op_vector  vector of instructions to transform the string X to Y
+ * @return  string Y transformed from X
+ * */
 std::string apply_transformation(std::string const &str_x, std::vector<Operation> const &op_vector) {
     std::string  Z = "";
     int pos = 0;
@@ -276,31 +277,6 @@ std::string apply_transformation(std::string const &str_x, std::vector<Operation
     return Z;
 }
 
-// Taken from: https://stackoverflow.com/a/444614
-template <typename T = std::mt19937>
-T random_generator() {
-    auto constexpr seed_bytes = sizeof(typename T::result_type) * T::state_size;
-    auto constexpr seed_len = seed_bytes / sizeof(std::seed_seq::result_type);
-    auto seed = std::array<std::seed_seq::result_type, seed_len>();
-    auto dev = std::random_device();
-    std::generate_n(begin(seed), seed_len, std::ref(dev));
-    auto seed_seq = std::seed_seq(begin(seed), end(seed));
-    return T{seed_seq};
-}
-
-// Taken from: https://stackoverflow.com/a/444614
-std::string generate_random_alphanumeric_string(std::size_t len) {
-    static constexpr auto chars =
-            "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz";
-    thread_local auto rng = random_generator<>();
-    auto dist = std::uniform_int_distribution{{}, std::strlen(chars) - 1};
-    auto result = std::string(len, '\0');
-    std::generate_n(begin(result), len, [&]() { return chars[dist(rng)]; });
-    return result;
-}
-
 int main(int argc, char *argv[]) {
     // Check correct usage (e.g. 'strings 1000 5')
     if (argc != 3) {
@@ -310,54 +286,11 @@ int main(int argc, char *argv[]) {
 
     std::chrono::time_point <std::chrono::steady_clock> t1, t2, t3;
     long dt1, dt2;
-    std::string lcs, X, Y, Z;
+    std::string X, Y, Z;
     int dummy_val = 0; // Use for accumulation to prevent compiler optimising away ops
 
     int string_length = get_string_length(argv[1]);
     int repeats = get_repeat_count(argv[2]);
-
-    // LCS Table
-
-    // Example strings X and Y from the book
-    //X = "CATCGA";
-    //Y = "GTACCGTCA";
-
-    // Create random alphanumeric strings of user specified length
-    X = generate_random_alphanumeric_string(string_length);
-    Y = generate_random_alphanumeric_string(string_length);
-
-    dt1 = 0;
-    dt2 = 0;
-
-    for (int i = 0; i < repeats; i++) {
-
-        t1 = std::chrono::steady_clock::now();
-
-        // Construct LCS table
-        auto lcs_table = LCSTable(X, Y);
-        t2 = std::chrono::steady_clock::now();
-
-        // Calculate LCS string
-        lcs = assemble_lcs(lcs_table, X.size(), Y.size());
-        t3 = std::chrono::steady_clock::now();
-
-        // Accumulate measurement time
-        dt1 += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-        dt2 += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-
-        // Print intermediate LCS table for debugging
-        //std::cout << lcs_table << std::endl;
-
-        // Use values in the sorted array to prevent the compiler optimising away ops
-        dummy_val += lcs[(100 * i) % string_length];
-    }
-
-    // Print final LCS string
-    //std::cout << "Longest common subsequence: " << lcs << std::endl;
-    std::cout << "Time to compute LCS table: " << ((float) dt1 / (1e6 * repeats)) << " s (average per op)" << std::endl;
-    std::cout << "Time to compute LCS string: " << ((float) dt2 / (1e6 * repeats)) << " s (average per op)" << std::endl;
-
-    // Transform Tables
 
     // Example strings X and Y from the book
     //X = "ACAAGC";
@@ -371,10 +304,10 @@ int main(int argc, char *argv[]) {
     dt2 = 0;
 
     // Define operation costs as provided in the book
-    int cost_copy = -1;
-    int cost_replace = 1;
-    int cost_delete = 2;
-    int cost_insert = 2;
+    const int cost_copy = -1;
+    const int cost_replace = 1;
+    const int cost_delete = 2;
+    const int cost_insert = 2;
 
     for (int i = 0; i < repeats; i++) {
 

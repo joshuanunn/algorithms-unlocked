@@ -1,7 +1,21 @@
 CXXFLAGS = --std=c++17 -O3
 
-strings : strings.o
-	$(CXX) $^ -o $@
+all : lcs transform
+
+lcs : randstring.o lcs.o
+	$(CXX) $(CXXFLAGS) -o $@ randstring.o lcs.o
+
+transform : randstring.o transform.o
+	$(CXX) $(CXXFLAGS) -o $@ randstring.o transform.o
+
+randstring.o : include/randstring.cpp include/randstring.hpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+lcs.o : lcs.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+transform.o : transform.cpp
+	$(CXX) $(CXXFLAGS) -c $<
 
 clean :
-	rm -rf *.o strings
+	rm -rf *.o lcs transform

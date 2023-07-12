@@ -24,4 +24,4 @@ match.o : match.cpp
 	$(CXX) $(CXXFLAGS) -c $<
 
 clean :
-	rm -rf *.o lcs transform
+	rm -rf *.o lcs transform match

@@ -32,6 +32,11 @@ long get_long_param(char *param) {
     return long_param;
 }
 
+/*
+ * @brief Compute the greatest common divisor (g) of two integers (a, b)
+ *
+ * @return  tuple of {g, i, j}, where g = ai + bj
+ * */
 std::tuple<long, long, long> euclid(long a, long b) {
     if (b == 0) {
         return {a, 1, 0};

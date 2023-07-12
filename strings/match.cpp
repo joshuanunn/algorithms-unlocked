@@ -276,8 +276,6 @@ int main(int argc, char *argv[]) {
         // Use values in the sorted array to prevent the compiler optimising away ops
         dummy_val += shifts.size();
     }
-    // Print final Transformed string
-    //std::cout << "Transformed string (Z): " << Z << std::endl;
     std::cout << "Time to compute State table: " << ((float) dt1 / (1e6 * repeats)) << " s (average per op)" << std::endl;
     std::cout << "Time to find substring matches: " << ((float) dt2 / (1e6 * repeats)) << " s (average per op)" << std::endl;
 
